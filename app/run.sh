@@ -9,6 +9,8 @@
 : "${DEBUG:=false}"
 : "${COMMAND:=$@}"
 : "${TIMER:=60}"
+: "${DSMR_GIT_REPO:=dennissiemensma/dsmr-reader}"
+: "${DSMR_AUTO_UPDATE:=false}"
 
 #---------------------------------------------------------------------------------------------------------------------------
 # FUNCTIONS
@@ -32,6 +34,23 @@ function _pre_reqs() {
   rm -f /var/tmp/*.pid
 }
 
+function _update_on_startup() {
+  dsmr_release=$(curl -Ssl "https://api.github.com/repos/${DSMR_GIT_REPO}/releases/latest" | jq -r .tag_name)
+  _info "Update on startup enabled! Using latest DSMR release: ${dsmr_release}."
+  rm -rf /dsmr/*
+  pushd /dsmr
+  wget -N https://github.com/"${DSMR_GIT_REPO}"/archive/"${dsmr_release}".tar.gz
+  tar -xf "${dsmr_release}".tar.gz --strip-components=1 --overwrite
+  rm -rf "${dsmr_release}".tar.gz
+  popd
+  cp /dsmr/dsmrreader/provisioning/django/postgresql.py /dsmr/dsmrreader/settings.py
+  pip3 install -r /dsmr/dsmrreader/provisioning/requirements/base.txt --no-cache-dir
+  pip3 install -r /dsmr/dsmrreader/provisioning/requirements/postgresql.txt --no-cache-dir
+  cp /dsmr/dsmrreader/provisioning/nginx/dsmr-webinterface /etc/nginx/conf.d/dsmr-webinterface.conf
+  rm -rf /tmp/*
+}
+
+
 function _override_entrypoint() {
   if [[ -n "${COMMAND}" ]]; then
     _info "ENTRYPOINT: Executing override command..."
@@ -52,6 +71,7 @@ function _check_db_availability() {
     fi
     echo -n "."
   done
+  _info "Succesfully connected to the database server. Continuing..."
 }
 
 function _set_throttle() {
@@ -133,8 +153,8 @@ function _start_supervisord() {
 # MAIN
 #---------------------------------------------------------------------------------------------------------------------------
 [[ "${DEBUG}" == 'true' ]] && set -o xtrace
-
 _pre_reqs
+[[ "${DSMR_AUTO_UPDATE}" == 'true' ]] && _update_on_startup
 _override_entrypoint
 _check_db_availability
 _set_throttle

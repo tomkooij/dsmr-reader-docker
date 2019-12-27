@@ -34,6 +34,7 @@ DSMR related (defaults are shown as value):
 - DSMR_PASSWORD=admin
 - DSMR_BACKEND_SLEEP=<value in seconds>
 - DSMR_DATALOGGER_SLEEP=<value in seconds>
+- DSMR_AUTO_UPDATE=false
 
 DB related (defaults are shown as value):
 - DB_HOST=dsmrdb
