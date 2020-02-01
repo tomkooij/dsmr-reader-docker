@@ -1,5 +1,4 @@
-variables:
-- group: docker
+
 
 trigger:
 - master
